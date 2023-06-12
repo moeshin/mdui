@@ -227,12 +227,15 @@ class Select {
       elementTop -= this.$window[0].getBoundingClientRect().top;
     }
 
+    const gutterHeight = this.options.gutter || 0;
+
     let transformOriginY: string;
     let menuMarginTop: number;
     let scrollTop: number | null = null;
 
     if (this.options.position === 'bottom') {
-      const menuMaxHeight = windowHeight - elementHeight - elementTop;
+      const menuMaxHeight =
+        windowHeight - elementHeight - elementTop - gutterHeight;
       if (menuHeight > menuMaxHeight) {
         menuHeight = menuMaxHeight;
         scrollTop = this.selectedIndex * itemHeight;
@@ -241,15 +244,15 @@ class Select {
       transformOriginY = '0px';
     } else if (this.options.position === 'top') {
       if (menuHeight > elementTop) {
-        menuHeight = elementTop;
+        menuHeight = elementTop - gutterHeight;
         scrollTop = (this.selectedIndex + 1) * itemHeight - menuHeight;
       }
       menuMarginTop = -menuHeight - 1;
       transformOriginY = '100%';
     } else {
       // 菜单高度不能超过窗口高度
-      let menuMaxHeight = windowHeight - this.options.gutter! * 2;
-      if (menuMaxHeight < this.options.gutter! * 2) {
+      let menuMaxHeight = windowHeight - gutterHeight * 2;
+      if (menuMaxHeight < itemHeight) {
         menuMaxHeight = windowHeight;
       }
       let isScroll = false;
@@ -279,15 +282,15 @@ class Select {
       } else {
         // 菜单不能超出窗口
         const menuTop = elementTop + menuMarginTop;
-        if (menuTop < this.options.gutter!) {
+        if (menuTop < gutterHeight) {
           // 不能超出窗口上方
-          menuMarginTop = -(elementTop - this.options.gutter!);
-        } else if (menuTop + menuHeight + this.options.gutter! > windowHeight) {
+          menuMarginTop = -(elementTop - gutterHeight);
+        } else if (menuTop + menuHeight + gutterHeight > windowHeight) {
           // 不能超出窗口下方
           menuMarginTop = -(
             elementTop +
             menuHeight +
-            this.options.gutter! -
+            gutterHeight -
             windowHeight
           );
         }
