@@ -1,6 +1,6 @@
 /*!
  * mdui 1.0.2 (https://mdui.org)
- * Copyright 2016-2021 zdhxiong
+ * Copyright 2016-2023 zdhxiong
  * Licensed under MIT
  */
 function isFunction(target) {
@@ -3505,6 +3505,17 @@ class Select {
         this.$native = $(selector).first();
         this.$native.hide();
         extend(this.options, options);
+        if (this.options.window) {
+            if (typeof this.options.window === 'string') {
+                const jq = this.$native.parents(this.options.window);
+                if (jq.length > 0) {
+                    this.$window = jq.first();
+                }
+            }
+            else {
+                this.$window = $(this.options.window);
+            }
+        }
         // 为当前 select 生成唯一 ID
         this.uniqueID = $.guid();
         // 生成 select
@@ -3523,7 +3534,9 @@ class Select {
      * 调整菜单位置
      */
     readjustMenu() {
-        const windowHeight = $window.height();
+        const windowHeight = this.$window
+            ? this.$window.innerHeight()
+            : $window.height();
         // mdui-select 高度
         const elementHeight = this.$element.height();
         // 菜单项高度
@@ -3534,22 +3547,41 @@ class Select {
         const menuWidth = this.$element.innerWidth() + 0.01; // 必须比真实宽度多一点，不然会出现省略号
         let menuHeight = itemHeight * this.size + itemMargin * 2;
         // mdui-select 在窗口中的位置
-        const elementTop = this.$element[0].getBoundingClientRect().top;
+        let elementTop = this.$element[0].getBoundingClientRect().top;
+        if (this.$window) {
+            elementTop -= this.$window[0].getBoundingClientRect().top;
+        }
+        const gutterHeight = this.options.gutter || 0;
         let transformOriginY;
         let menuMarginTop;
+        let scrollTop = null;
         if (this.options.position === 'bottom') {
+            const menuMaxHeight = windowHeight - elementHeight - elementTop - gutterHeight;
+            if (menuHeight > menuMaxHeight) {
+                menuHeight = menuMaxHeight;
+                scrollTop = this.selectedIndex * itemHeight;
+            }
             menuMarginTop = elementHeight;
             transformOriginY = '0px';
         }
         else if (this.options.position === 'top') {
+            if (menuHeight > elementTop) {
+                menuHeight = elementTop - gutterHeight;
+                scrollTop = (this.selectedIndex + 1) * itemHeight - menuHeight;
+            }
             menuMarginTop = -menuHeight - 1;
             transformOriginY = '100%';
         }
         else {
             // 菜单高度不能超过窗口高度
-            const menuMaxHeight = windowHeight - this.options.gutter * 2;
+            let menuMaxHeight = windowHeight - gutterHeight * 2;
+            if (menuMaxHeight < itemHeight) {
+                menuMaxHeight = windowHeight;
+            }
+            let isScroll = false;
             if (menuHeight > menuMaxHeight) {
                 menuHeight = menuMaxHeight;
+                isScroll = true;
             }
             // 菜单的 margin-top
             menuMarginTop = -(itemMargin +
@@ -3561,21 +3593,36 @@ class Select {
             if (menuMarginTop < menuMaxMarginTop) {
                 menuMarginTop = menuMaxMarginTop;
             }
-            // 菜单不能超出窗口
-            const menuTop = elementTop + menuMarginTop;
-            if (menuTop < this.options.gutter) {
-                // 不能超出窗口上方
-                menuMarginTop = -(elementTop - this.options.gutter);
+            if (elementTop === 0) {
+                menuMarginTop = 0;
             }
-            else if (menuTop + menuHeight + this.options.gutter > windowHeight) {
-                // 不能超出窗口下方
-                menuMarginTop = -(elementTop +
-                    menuHeight +
-                    this.options.gutter -
-                    windowHeight);
+            else {
+                // 菜单不能超出窗口
+                const menuTop = elementTop + menuMarginTop;
+                if (menuTop < gutterHeight) {
+                    // 不能超出窗口上方
+                    menuMarginTop = -(elementTop - gutterHeight);
+                }
+                else if (menuTop + menuHeight + gutterHeight > windowHeight) {
+                    // 不能超出窗口下方
+                    menuMarginTop = -(elementTop +
+                        menuHeight +
+                        gutterHeight -
+                        windowHeight);
+                }
             }
             // transform 的 Y 轴坐标
-            transformOriginY = `${this.selectedIndex * itemHeight + itemHeight / 2 + itemMargin}px`;
+            if (isScroll) {
+                transformOriginY = '0px';
+                scrollTop =
+                    this.selectedIndex * itemHeight +
+                        itemHeight / 2 -
+                        menuHeight / 2 -
+                        itemMargin;
+            }
+            else {
+                transformOriginY = `${this.selectedIndex * itemHeight + itemHeight / 2 + itemMargin}px`;
+            }
         }
         // 设置样式
         this.$element.innerWidth(menuWidth);
@@ -3586,6 +3633,9 @@ class Select {
             'margin-top': menuMarginTop + 'px',
             'transform-origin': 'center ' + transformOriginY + ' 0',
         });
+        if (scrollTop != null) {
+            this.$menu[0].scrollTop = scrollTop;
+        }
     }
     /**
      * select 是否为打开状态
