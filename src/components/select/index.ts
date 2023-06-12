@@ -386,7 +386,9 @@ class Select {
     );
 
     this.$element = $(
-      `<div class="mdui-select mdui-select-position-${this.options.position}" ` +
+      `<div class="mdui-select mdui-select-position-${
+        this.options.position
+      } ${this.$native.attr('class')}" ` +
         `style="${this.$native.attr('style')}" ` +
         `id="${this.uniqueID}"></div>`,
     )

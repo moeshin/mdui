@@ -3676,7 +3676,7 @@ class Select {
                 `>${text}</div>`);
         });
         this.$selected = $(`<span class="mdui-select-selected">${this.selectedText}</span>`);
-        this.$element = $(`<div class="mdui-select mdui-select-position-${this.options.position}" ` +
+        this.$element = $(`<div class="mdui-select mdui-select-position-${this.options.position} ${this.$native.attr('class')}" ` +
             `style="${this.$native.attr('style')}" ` +
             `id="${this.uniqueID}"></div>`)
             .show()
