@@ -205,6 +205,10 @@ class Select {
    * 调整菜单位置
    */
   private readjustMenu(): void {
+    const windowHeight = this.$window
+      ? this.$window.innerHeight()
+      : $window.height();
+
     // mdui-select 高度
     const elementHeight = this.$element.height();
 
@@ -217,26 +221,33 @@ class Select {
     const menuWidth = this.$element.innerWidth() + 0.01; // 必须比真实宽度多一点，不然会出现省略号
     let menuHeight = itemHeight * this.size + itemMargin * 2;
 
+    // mdui-select 在窗口中的位置
+    let elementTop = this.$element[0].getBoundingClientRect().top;
+    if (this.$window) {
+      elementTop -= this.$window[0].getBoundingClientRect().top;
+    }
+
     let transformOriginY: string;
     let menuMarginTop: number;
+    let scrollTop: number | null = null;
 
     if (this.options.position === 'bottom') {
+      const menuMaxHeight = windowHeight - elementHeight - elementTop;
+      if (menuHeight > menuMaxHeight) {
+        menuHeight = menuMaxHeight;
+        scrollTop = this.selectedIndex * itemHeight;
+      }
       menuMarginTop = elementHeight;
       transformOriginY = '0px';
     } else if (this.options.position === 'top') {
+      if (menuHeight > elementTop) {
+        menuHeight = elementTop;
+        scrollTop = (this.selectedIndex + 1) * itemHeight - menuHeight;
+      }
       menuMarginTop = -menuHeight - 1;
       transformOriginY = '100%';
     } else {
-      // mdui-select 在窗口中的位置
-      let elementTop = this.$element[0].getBoundingClientRect().top;
-      if (this.$window) {
-        elementTop -= this.$window[0].getBoundingClientRect().top;
-      }
-
       // 菜单高度不能超过窗口高度
-      const windowHeight = this.$window
-        ? this.$window.innerHeight()
-        : $window.height();
       let menuMaxHeight = windowHeight - this.options.gutter! * 2;
       if (menuMaxHeight < this.options.gutter! * 2) {
         menuMaxHeight = windowHeight;
@@ -285,11 +296,10 @@ class Select {
       // transform 的 Y 轴坐标
       if (isScroll) {
         transformOriginY = '0px';
-        this.$menu[0].scrollTop =
-          menuMarginTop +
+        scrollTop =
           this.selectedIndex * itemHeight +
           itemHeight / 2 -
-          this.options.gutter! +
+          menuHeight / 2 -
           itemMargin;
       } else {
         transformOriginY = `${
@@ -307,6 +317,9 @@ class Select {
         'margin-top': menuMarginTop + 'px',
         'transform-origin': 'center ' + transformOriginY + ' 0',
       });
+    if (scrollTop != null) {
+      this.$menu[0].scrollTop = scrollTop;
+    }
   }
 
   /**
