@@ -80,6 +80,11 @@ type OPTIONS = {
    * 菜单与窗口上下边框至少保持多少间距
    */
   gutter?: number;
+
+  /**
+   * 窗口：CSS 父选择器、或 DOM 元素、或 JQ 对象
+   */
+  window?: Selector | HTMLElement | ArrayLike<HTMLElement>;
 };
 
 type STATE = 'closing' | 'closed' | 'opening' | 'opened';
@@ -127,6 +132,11 @@ class Select {
   private $items: JQ = $();
 
   /**
+   * 窗口的 JQ 对象
+   */
+  private readonly $window?: JQ;
+
+  /**
    * 当前选中的菜单项的索引号
    */
   private selectedIndex = 0;
@@ -160,6 +170,17 @@ class Select {
 
     extend(this.options, options);
 
+    if (this.options.window) {
+      if (typeof this.options.window === 'string') {
+        const jq = this.$native.parents(this.options.window);
+        if (jq.length > 0) {
+          this.$window = jq.first();
+        }
+      } else {
+        this.$window = $(this.options.window);
+      }
+    }
+
     // 为当前 select 生成唯一 ID
     this.uniqueID = $.guid();
 
@@ -184,8 +205,6 @@ class Select {
    * 调整菜单位置
    */
   private readjustMenu(): void {
-    const windowHeight = $window.height();
-
     // mdui-select 高度
     const elementHeight = this.$element.height();
 
@@ -198,9 +217,6 @@ class Select {
     const menuWidth = this.$element.innerWidth() + 0.01; // 必须比真实宽度多一点，不然会出现省略号
     let menuHeight = itemHeight * this.size + itemMargin * 2;
 
-    // mdui-select 在窗口中的位置
-    const elementTop = this.$element[0].getBoundingClientRect().top;
-
     let transformOriginY: string;
     let menuMarginTop: number;
 
@@ -211,10 +227,24 @@ class Select {
       menuMarginTop = -menuHeight - 1;
       transformOriginY = '100%';
     } else {
+      // mdui-select 在窗口中的位置
+      let elementTop = this.$element[0].getBoundingClientRect().top;
+      if (this.$window) {
+        elementTop -= this.$window[0].getBoundingClientRect().top;
+      }
+
       // 菜单高度不能超过窗口高度
-      const menuMaxHeight = windowHeight - this.options.gutter! * 2;
+      const windowHeight = this.$window
+        ? this.$window.innerHeight()
+        : $window.height();
+      let menuMaxHeight = windowHeight - this.options.gutter! * 2;
+      if (menuMaxHeight < this.options.gutter! * 2) {
+        menuMaxHeight = windowHeight;
+      }
+      let isScroll = false;
       if (menuHeight > menuMaxHeight) {
         menuHeight = menuMaxHeight;
+        isScroll = true;
       }
 
       // 菜单的 margin-top
@@ -233,25 +263,39 @@ class Select {
         menuMarginTop = menuMaxMarginTop;
       }
 
-      // 菜单不能超出窗口
-      const menuTop = elementTop + menuMarginTop;
-      if (menuTop < this.options.gutter!) {
-        // 不能超出窗口上方
-        menuMarginTop = -(elementTop - this.options.gutter!);
-      } else if (menuTop + menuHeight + this.options.gutter! > windowHeight) {
-        // 不能超出窗口下方
-        menuMarginTop = -(
-          elementTop +
-          menuHeight +
-          this.options.gutter! -
-          windowHeight
-        );
+      if (elementTop === 0) {
+        menuMarginTop = 0;
+      } else {
+        // 菜单不能超出窗口
+        const menuTop = elementTop + menuMarginTop;
+        if (menuTop < this.options.gutter!) {
+          // 不能超出窗口上方
+          menuMarginTop = -(elementTop - this.options.gutter!);
+        } else if (menuTop + menuHeight + this.options.gutter! > windowHeight) {
+          // 不能超出窗口下方
+          menuMarginTop = -(
+            elementTop +
+            menuHeight +
+            this.options.gutter! -
+            windowHeight
+          );
+        }
       }
 
       // transform 的 Y 轴坐标
-      transformOriginY = `${
-        this.selectedIndex * itemHeight + itemHeight / 2 + itemMargin
-      }px`;
+      if (isScroll) {
+        transformOriginY = '0px';
+        this.$menu[0].scrollTop =
+          menuMarginTop +
+          this.selectedIndex * itemHeight +
+          itemHeight / 2 -
+          this.options.gutter! +
+          itemMargin;
+      } else {
+        transformOriginY = `${
+          this.selectedIndex * itemHeight + itemHeight / 2 + itemMargin
+        }px`;
+      }
     }
 
     // 设置样式
