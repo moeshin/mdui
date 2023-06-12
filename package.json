@@ -1,6 +1,6 @@
 {
   "name": "@moeshin/mdui",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "a CSS Framework based on material design",
   "main": "dist/js/mdui.js",
   "module": "dist/js/mdui.esm.js",
